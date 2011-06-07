@@ -41,7 +41,7 @@ apply from: "$buildSrcDir/maven-root-pom.gradle"
 // -----------------------------------------------------------------------------
 allprojects {
     // group will translate to groupId during pom generation and deployment
-    group = 'org.springframework.social'
+    group = springSocialGroup
 
     // version will be used in maven pom generation as well as determining
     // where artifacts should be deployed, based on release type of snapshot,
@@ -55,6 +55,7 @@ allprojects {
         mavenRepo urls: 'http://maven.springframework.org/release'
         mavenRepo urls: 'http://maven.springframework.org/milestone'
         mavenRepo urls: 'http://maven.springframework.org/snapshot'
+        mavenRepo urls: 'https://oss.sonatype.org/content/groups/public/'
         mavenCentral()
     }
 }
@@ -88,7 +89,9 @@ configure(javaprojects) {
     libsSrcDir = new File(libsDir, 'src')
 
     // add tasks for creating source jars and generating poms etc
-    apply from: "$buildSrcDir/maven-deployment.gradle"
+    //apply from: "$buildSrcDir/maven-deployment.gradle"
+    // deploy to molindo repo
+    apply from: "$rootDir/molindo-maven-deployment.gradle"
 
     // add tasks for finding and publishing .xsd files
     apply from: "$buildSrcDir/schema-publication.gradle"
@@ -185,9 +188,10 @@ project('spring-social-test') {
 // -----------------------------------------------------------------------------
 // Configuration for the docs subproject
 // -----------------------------------------------------------------------------
-project('docs') {
-    apply from: "$buildSrcDir/docs.gradle"
-}
+// disable docs.gradle and checks.gradle for molindo build
+//project('docs') {
+//    apply from: "$buildSrcDir/docs.gradle"
+//}
 
-apply from: "$buildSrcDir/dist.gradle"
+//apply from: "$buildSrcDir/dist.gradle"
 apply from: "$buildSrcDir/checks.gradle"
