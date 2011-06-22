@@ -44,6 +44,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
@@ -66,10 +67,12 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 
 	private String filterProcessesUrl = "/auth";
 	private String signupUrl = "/signup";
+	private String connectionAddedRedirectUrl = "/";
 	
 	private SessionAuthenticationStrategy sessionStrategy = new NullAuthenticatedSessionStrategy();
 
 	private AuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+	private AuthenticationFailureHandler failureHandler = new SimpleUrlAuthenticationFailureHandler();
 	
 	private UserIdExtractor userIdExtractor;
 
@@ -255,7 +258,12 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 				if (userId != null && principal instanceof ConnectionData) {
 					Connection<?> connection = addConnection(authService, userId, (ConnectionData) principal);
 					if(connection != null) {
-						throw new SocialAuthenticationRedirectException(authService.getConnectionAddedRedirectUrl(request, connection));
+						String redirectUrl = authService.getConnectionAddedRedirectUrl(request, connection);
+						if (redirectUrl == null) {
+							// use default instead
+							redirectUrl = getConnectionAddedRedirectUrl();
+						}
+						throw new SocialAuthenticationRedirectException(redirectUrl);
 					} else {
 						return null;
 					}
@@ -403,6 +411,8 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 		}
 
 		getRememberMeServices().loginFail(request, response);
+		
+		getFailureHandler().onAuthenticationFailure(request, response, failed);
 	}
 
 	public AuthenticationDetailsSource<HttpServletRequest, ?> getAuthDetailsSource() {
@@ -448,6 +458,14 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 		this.signupUrl = signupUrl;
 	}
 
+	public String getConnectionAddedRedirectUrl() {
+		return connectionAddedRedirectUrl;
+	}
+
+	public void setConnectionAddedRedirectUrl(String connectionAddedRedirectUrl) {
+		this.connectionAddedRedirectUrl = connectionAddedRedirectUrl;
+	}
+
 	public void setPostLoginUrl(String postLoginUrl) {
 		AuthenticationSuccessHandler successHandler = getSuccessHandler();
 		if (successHandler instanceof AbstractAuthenticationTargetUrlRequestHandler) {
@@ -458,6 +476,16 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 		}
 	}
 
+	public void setPostFailureUrl(String postFailureUrl) {
+		AuthenticationFailureHandler failureHandler = getFailureHandler();
+		if (failureHandler instanceof SimpleUrlAuthenticationFailureHandler) {
+			SimpleUrlAuthenticationFailureHandler h = (SimpleUrlAuthenticationFailureHandler) failureHandler;
+			h.setDefaultFailureUrl(postFailureUrl);
+		} else {
+			throw new IllegalStateException("can't set postFailureUrl on unknown failureHandler, type is " + failureHandler.getClass().getName());
+		}
+	}
+	
 	public RememberMeServices getRememberMeServices() {
 		return rememberMeServices;
 	}
@@ -475,6 +503,14 @@ public class SocialAuthenticationFilter extends GenericFilterBean {
 			throw new NullPointerException("successHandler");
 		}
 		this.successHandler = successHandler;
+	}
+
+	public AuthenticationFailureHandler getFailureHandler() {
+		return failureHandler;
+	}
+
+	public void setFailureHandler(AuthenticationFailureHandler failureHandler) {
+		this.failureHandler = failureHandler;
 	}
 
 	public SessionAuthenticationStrategy getSessionStrategy() {
